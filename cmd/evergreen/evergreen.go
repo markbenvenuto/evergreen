@@ -38,6 +38,7 @@ func buildApp() *cli.App {
 		// Version and auto-update
 		operations.Version(),
 		operations.Update(),
+		operations.LocalRun(),
 
 		// Sub-Commands
 		operations.Service(),
