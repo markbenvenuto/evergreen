@@ -1,0 +1,17 @@
+pre:
+  - command: shell.exec
+    params:
+      script: "echo hi"
+
+tasks:
+- name: test_task1
+  depends_on: []
+  commands:
+  - command: shell.exec
+    params:
+      script: "echo Yeah!"
+
+post:
+  - command: shell.exec
+    params:
+      script: "echo hiiii"

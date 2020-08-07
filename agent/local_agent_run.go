@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/mock"
 )
@@ -18,8 +19,14 @@ const (
 	versionId = "v1"
 )
 
+func check(e error) {
+	if e != nil {
+		panic(e)
+	}
+}
+
 // LocalAgentRun - run a file
-func LocalAgentRun() {
+func LocalAgentRun(file string, display_task_id string) {
 
 	// var a *Agent
 	// var mockCommunicator *client.Mock
@@ -44,25 +51,25 @@ func LocalAgentRun() {
 		panic(err)
 	}
 
-	projYml := `
-pre:
-  - command: shell.exec
-    params:
-      script: "echo hi"
+	// 	projYml := `
+	// pre:
+	//   - command: shell.exec
+	//     params:
+	//       script: "echo hi"
 
-tasks:
-- name: test_task1
-  depends_on: []
-  commands:
-  - command: shell.exec
-    params:
-      script: "echo Yeah!"
+	// tasks:
+	// - name: test_task1
+	//   depends_on: []
+	//   commands:
+	//   - command: shell.exec
+	//     params:
+	//       script: "echo Yeah!"
 
-post:
-  - command: shell.exec
-    params:
-      script: "echo hiiii"
-`
+	// post:
+	//   - command: shell.exec
+	//     params:
+	//       script: "echo hiiii"
+	// `
 
 	var tc = &taskContext{
 		task: client.TaskData{
@@ -79,8 +86,11 @@ post:
 	}
 	p := &model.Project{}
 
+	dat, err := ioutil.ReadFile(file)
+	check(err)
+
 	//var pp ParserProject
-	_, err = model.LoadProjectInto([]byte(projYml), "", p)
+	_, err = model.LoadProjectInto([]byte(dat), "", p)
 	if err != nil {
 		panic(err)
 	}
@@ -100,7 +110,10 @@ post:
 		Task: &task.Task{
 			Id:          "task_id",
 			Version:     versionId,
-			DisplayName: "test_task1",
+			DisplayName: display_task_id,
+		},
+		Expansions: &util.Expansions{
+			"Foo": "Bar",
 		},
 		Project: p,
 		Timeout: &model.Timeout{IdleTimeoutSecs: 15, ExecTimeoutSecs: 15},
