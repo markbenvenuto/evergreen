@@ -43,7 +43,7 @@ type shellExec struct {
 	// WorkingDir is the working directory to start the shell in.
 	WorkingDir string `mapstructure:"working_dir"`
 
-	// SystemLog if set will write the shell command's output to the system logs, instead of the
+	// SystemLog if set will write the shell command's output to the system logs, instead of theMkdirAll
 	// task logs. This can be used to collect diagnostic data in the background of a running task.
 	SystemLog bool `mapstructure:"system_log"`
 

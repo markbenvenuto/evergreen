@@ -50,6 +50,26 @@ func newEvergreenLogSender(ctx context.Context, comm Communicator, channel strin
 	return s
 }
 
+func NewEvergreenLogSender2(ctx context.Context, comm Communicator, channel string, taskData TaskData, bufferSize int, bufferTime time.Duration) send.Sender {
+	s := &evergreenLogSender{
+		comm:                comm,
+		logChannel:          channel,
+		logTaskData:         taskData,
+		Base:                send.NewBase(taskData.ID),
+		bufferSize:          bufferSize,
+		pipe:                make(chan message.Composer, bufferSize/2),
+		signalFlush:         make(chan struct{}),
+		signalFlushComplete: make(chan struct{}),
+		lastBatch:           make(chan struct{}),
+		signalEnd:           make(chan struct{}),
+	}
+	ctx, s.cancel = context.WithCancel(ctx)
+
+	go s.startBackgroundSender(ctx)
+
+	return s
+}
+
 func (s *evergreenLogSender) getBufferTime() time.Duration {
 	s.RLock()
 	defer s.RUnlock()

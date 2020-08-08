@@ -134,6 +134,11 @@ func (c *s3get) Execute(ctx context.Context,
 		return errors.Wrap(err, "expanded params are not valid")
 	}
 
+	if conf.Expansions.Exists("LocalRunHack") {
+		logger.Execution().Info("LOCALRUN HACK - no s3 get")
+		return nil
+	}
+
 	// create pail bucket
 	httpClient := utility.GetHTTPClient()
 	httpClient.Timeout = s3HTTPClientTimeout

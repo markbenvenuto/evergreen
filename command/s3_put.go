@@ -223,6 +223,11 @@ func (s3pc *s3put) Execute(ctx context.Context,
 		return errors.WithStack(err)
 	}
 
+	if conf.Expansions.Exists("LocalRunHack") {
+		logger.Execution().Info("LOCALRUN HACK - no s3 put")
+		return nil
+	}
+
 	// create pail bucket
 	httpClient := utility.GetHTTPClient()
 	httpClient.Timeout = s3HTTPClientTimeout
