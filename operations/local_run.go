@@ -12,8 +12,9 @@ import (
 // LocalRun local run test command
 func LocalRun() cli.Command {
 	const (
-		keyNameFlagName = "name"
-		keyFileFlagName = "file"
+		keyNameFlagName      = "name"
+		keyFileFlagName      = "file"
+		buildVariantFlagName = "build"
 	)
 
 	return cli.Command{
@@ -29,6 +30,10 @@ func LocalRun() cli.Command {
 				Name:  keyFileFlagName,
 				Usage: "specify the path of an evergreen file",
 			},
+			cli.StringFlag{
+				Name:  buildVariantFlagName,
+				Usage: "build variant",
+			},
 		},
 		Before: mergeBeforeFuncs(
 			setPlainLogger,
@@ -37,6 +42,10 @@ func LocalRun() cli.Command {
 				keyName := c.String(keyNameFlagName)
 				if keyName == "" {
 					return errors.New("key name cannot be empty")
+				}
+				keyName = c.String(buildVariantFlagName)
+				if keyName == "" {
+					return errors.New("build variant name cannot be empty")
 				}
 				return nil
 			}),
@@ -47,8 +56,9 @@ func LocalRun() cli.Command {
 			//confPath := c.Parent().Parent().String(confFlagName)
 			keyName := c.String(keyNameFlagName)
 			keyFile := c.String(keyFileFlagName)
+			buildVariant := c.String(buildVariantFlagName)
 
-			agent.LocalAgentRun(keyFile, keyName)
+			agent.LocalAgentRun(keyFile, keyName, buildVariant)
 			return nil
 		},
 	}

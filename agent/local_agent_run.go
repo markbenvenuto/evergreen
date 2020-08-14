@@ -300,7 +300,8 @@ func (c *LocalRunMock) SendLogMessages(ctx context.Context, td client.TaskData, 
 	c.logMessages[td.ID] = append(c.logMessages[td.ID], msgs...)
 
 	for i := 0; i < len(msgs); i++ {
-		fmt.Printf("msg: %v\n", msgs[i])
+		//fmt.Printf("msg: %v\n", msgs[i])
+		fmt.Printf("%v\n", msgs[i].Message)
 	}
 
 	return nil
@@ -748,7 +749,7 @@ func check(e error) {
 }
 
 // LocalAgentRun - run a file
-func LocalAgentRun(file string, display_task_id string) {
+func LocalAgentRun(file string, display_task_id string, build_variant string) {
 
 	// var a *Agent
 	// var mockCommunicator *client.LocalRunMock
@@ -823,8 +824,8 @@ func LocalAgentRun(file string, display_task_id string) {
 		panic(err)
 	}
 
-	err = os.MkdirAll(tmpDirName+"/src", 0755)
-	check(err)
+	// err = os.MkdirAll(tmpDirName+"/src", 0755)
+	// check(err)
 
 	err = os.MkdirAll(tmpDirName+"/tmp", 0755)
 	check(err)
@@ -849,11 +850,29 @@ func LocalAgentRun(file string, display_task_id string) {
 			"aws_secret": "FAKEFAKE",
 
 			"LocalRunHack": "true",
+
+			// Hard coded evergreen constants
+			"global_github_oauth_token": "FAKE",
 		},
 		Project: p,
 		Timeout: &model.Timeout{IdleTimeoutSecs: 15, ExecTimeoutSecs: 15},
 		WorkDir: tc.taskDirectory,
+		Distro: &distro.Distro{
+			CloneMethod: "",
+		},
+		ProjectRef: &model.ProjectRef{
+			// TODO
+			Owner:  "mongodb",
+			Repo:   "mongo",
+			Branch: "master",
+		},
 	}
+
+	// e, err := model.PopulateExpansions(t, h, oauthToken)
+	// if err != nil {
+	// 	as.LoggedError(w, r, http.StatusInternalServerError, err)
+	// 	return
+	// }
 
 	tc.taskConfig.WorkDir = tc.taskDirectory
 	tc.taskConfig.Expansions.Put("workdir", tc.taskConfig.WorkDir)
@@ -879,6 +898,47 @@ func LocalAgentRun(file string, display_task_id string) {
 	}
 
 	a.SetDefaultLogger(sender)
+
+	v := &model.Version{
+		Id:                  "versionId",
+		CreateTime:          time.Now(),
+		Revision:            "foobar",
+		RevisionOrderNumber: 500,
+		Requester:           evergreen.RepotrackerVersionRequester,
+		BuildVariants: []model.VersionBuildStatus{
+			{
+				BuildVariant: build_variant,
+				Activated:    false,
+			},
+		},
+		Config: string(dat),
+	}
+	table := model.NewTaskIdTable(p, v, "", "")
+
+	args := model.BuildCreateArgs{
+		Project:   *p,
+		Version:   *v,
+		TaskIDs:   table,
+		BuildName: build_variant,
+		Activated: true,
+	}
+	_, tasks, err := model.CreateBuildFromVersionNoInsert(args)
+
+	t2 := tasks.Export()
+	for i := 0; i < tasks.Len(); i++ {
+		fmt.Printf("T: %v - %v\n", t2[i].DisplayName, t2[i].Id)
+	}
+
+	var dt *task.Task
+
+	for i := 0; i < tasks.Len(); i++ {
+		if t2[i].DisplayName == display_task_id {
+			dt = &t2[i]
+		}
+	}
+
+	tc.taskModel = dt
+	tc.taskGroup = dt.TaskGroup
 
 	fmt.Println("Run pre task commands")
 	a.runPreTaskCommands(ctx, tc)
