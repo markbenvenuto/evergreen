@@ -225,6 +225,25 @@ func (s3pc *s3put) Execute(ctx context.Context,
 
 	if conf.Expansions.Exists("LocalRunHack") {
 		logger.Execution().Info("LOCALRUN HACK - no s3 put")
+
+		remoteFile := filepath.Join("/tmp/s3", s3pc.RemoteFile)
+		if err := createEnclosingDirectoryIfNeeded(remoteFile); err != nil {
+			return errors.Wrap(err, "unable to create local_file directory")
+		}
+
+		localFile := filepath.Join(s3pc.workDir, s3pc.LocalFile)
+		if !utility.FileExists(localFile) {
+			logger.Execution().Info("LOCALRUN HACK - file not found " + localFile)
+			return nil
+		}
+
+		//TODO - stop hard coding
+		if _, err := CopyFile(localFile, remoteFile); err != nil {
+			return errors.Wrap(err, "failed to local run s3 put copy")
+		}
+
+		logger.Execution().Info("LOCALRUN HACK - s3 copy of '" + localFile + "' to '" + remoteFile)
+
 		return nil
 	}
 

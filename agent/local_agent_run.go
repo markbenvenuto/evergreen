@@ -851,6 +851,9 @@ func LocalAgentRun(file string, display_task_id string, build_variant string) {
 
 			"LocalRunHack": "true",
 
+			// Server stuff
+			"disable_shared_scons_cache": "true",
+
 			// Hard coded evergreen constants
 			"global_github_oauth_token": "FAKE",
 		},
@@ -867,12 +870,6 @@ func LocalAgentRun(file string, display_task_id string, build_variant string) {
 			Branch: "master",
 		},
 	}
-
-	// e, err := model.PopulateExpansions(t, h, oauthToken)
-	// if err != nil {
-	// 	as.LoggedError(w, r, http.StatusInternalServerError, err)
-	// 	return
-	// }
 
 	tc.taskConfig.WorkDir = tc.taskDirectory
 	tc.taskConfig.Expansions.Put("workdir", tc.taskConfig.WorkDir)
@@ -925,9 +922,9 @@ func LocalAgentRun(file string, display_task_id string, build_variant string) {
 	_, tasks, err := model.CreateBuildFromVersionNoInsert(args)
 
 	t2 := tasks.Export()
-	for i := 0; i < tasks.Len(); i++ {
-		fmt.Printf("T: %v - %v\n", t2[i].DisplayName, t2[i].Id)
-	}
+	// for i := 0; i < tasks.Len(); i++ {
+	// 	fmt.Printf("T: %v - %v\n", t2[i].DisplayName, t2[i].Id)
+	// }
 
 	var dt *task.Task
 
@@ -939,6 +936,45 @@ func LocalAgentRun(file string, display_task_id string, build_variant string) {
 
 	tc.taskModel = dt
 	tc.taskGroup = dt.TaskGroup
+
+	bv := p.FindBuildVariant(dt.BuildVariant)
+	tc.taskConfig.Expansions.Update(bv.Expansions)
+
+	// h := host.Host{
+	// 	Id: "h",
+	// 	Distro: distro.Distro{
+	// 		Id:      "d1",
+	// 		WorkDir: "/home/evg",
+	// 		Expansions: []distro.Expansion{
+	// 			distro.Expansion{
+	// 				Key:   "note",
+	// 				Value: "huge success",
+	// 			},
+	// 			distro.Expansion{
+	// 				Key:   "cake",
+	// 				Value: "truth",
+	// 			},
+	// 			// distro.Expansion{
+	// 			// 	Key: "Foo", Value: "Bar"},
+	// 			// distro.Expansion{
+	// 			// 	Key: "aws_key", Value: "FAKEFAKE"},
+	// 			// distro.Expansion{
+	// 			// 	Key: "aws_secret", Value: "FAKEFAKE"},
+	// 			// distro.Expansion{
+	// 			// 	Key: "LocalRunHack", Value: "true"},
+	// 			// // Hard coded evergreen constants
+	// 			// distro.Expansion{
+	// 			// 	Key: "global_github_oauth_token", Value: "FAKE"},
+	// 		},
+	// 	},
+	// }
+
+	// e, err := model.PopulateExpansions(dt, &h, "FAKEOAUTH")
+	// if err != nil {
+	// 	return
+	// }
+
+	// tc.taskConfig.Expansions = &e
 
 	fmt.Println("Run pre task commands")
 	a.runPreTaskCommands(ctx, tc)

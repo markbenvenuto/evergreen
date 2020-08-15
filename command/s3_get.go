@@ -2,6 +2,7 @@ package command
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -119,6 +120,32 @@ func (c *s3get) expandParams(conf *model.TaskConfig) error {
 	return util.ExpandValues(c, conf.GetExpansionsWithRestricted())
 }
 
+// CopyFile copies from src to dst until either EOF is reached
+// on src or an error occurs. It verifies src exists and removes
+// the dst if it exists.
+// Copied from /home/ubuntu/go/src/github.com/evergreen-ci/evergreen/vendor/github.com/docker/docker/pkg/fileutils/fileutils.go
+func CopyFile(src, dst string) (int64, error) {
+	cleanSrc := filepath.Clean(src)
+	cleanDst := filepath.Clean(dst)
+	if cleanSrc == cleanDst {
+		return 0, nil
+	}
+	sf, err := os.Open(cleanSrc)
+	if err != nil {
+		return 0, err
+	}
+	defer sf.Close()
+	if err := os.Remove(cleanDst); err != nil && !os.IsNotExist(err) {
+		return 0, err
+	}
+	df, err := os.Create(cleanDst)
+	if err != nil {
+		return 0, err
+	}
+	defer df.Close()
+	return io.Copy(df, sf)
+}
+
 // Implementation of Execute.  Expands the parameters, and then fetches the
 // resource from s3.
 func (c *s3get) Execute(ctx context.Context,
@@ -136,6 +163,34 @@ func (c *s3get) Execute(ctx context.Context,
 
 	if conf.Expansions.Exists("LocalRunHack") {
 		logger.Execution().Info("LOCALRUN HACK - no s3 get")
+
+		// if the local file or extract_to is a relative path, join it to the
+		// working dir
+		if c.LocalFile != "" {
+			if !filepath.IsAbs(c.LocalFile) {
+				c.LocalFile = filepath.Join(conf.WorkDir, c.LocalFile)
+			}
+
+			if err := createEnclosingDirectoryIfNeeded(c.LocalFile); err != nil {
+				return errors.Wrap(err, "unable to create local_file directory")
+			}
+		}
+
+		if c.ExtractTo != "" {
+			if !filepath.IsAbs(c.ExtractTo) {
+				c.ExtractTo = filepath.Join(conf.WorkDir, c.ExtractTo)
+			}
+
+			if err := createEnclosingDirectoryIfNeeded(c.ExtractTo); err != nil {
+				return errors.Wrap(err, "unable to create extract_to directory")
+			}
+		}
+
+		//TODO - stop hard coding
+		if _, err := CopyFile(filepath.Join("/tmp/s3", c.RemoteFile), c.LocalFile); err != nil {
+			return errors.Wrap(err, "failed to local run s3 get copy")
+		}
+
 		return nil
 	}
 

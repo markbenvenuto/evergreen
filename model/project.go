@@ -856,6 +856,7 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 			expansions.Put("trigger_revision", upstreamBuild.Revision)
 			upstreamProjectID = upstreamBuild.Project
 		}
+		
 		var upstreamProject *ProjectRef
 		upstreamProject, err = FindOneProjectRef(upstreamProjectID)
 		if err != nil {
