@@ -11,6 +11,8 @@ import (
 	"sync"
 	"time"
 
+	"gopkg.in/yaml.v2"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/cloud"
@@ -748,8 +750,118 @@ func check(e error) {
 	}
 }
 
+func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Expansions, error) {
+	if t == nil {
+		return nil, errors.New("task cannot be nil")
+	}
+	if h == nil {
+		return nil, errors.New("host cannot be nil")
+	}
+
+	expansions := util.Expansions{}
+	expansions.Put("execution", fmt.Sprintf("%v", t.Execution))
+	expansions.Put("version_id", t.Version)
+	expansions.Put("task_id", t.Id)
+	expansions.Put("task_name", t.DisplayName)
+	expansions.Put("build_id", t.BuildId)
+	expansions.Put("build_variant", t.BuildVariant)
+	expansions.Put("revision", t.Revision)
+	expansions.Put(evergreen.GlobalGitHubTokenExpansion, oauthToken)
+	expansions.Put("distro_id", h.Distro.Id)
+	// expansions.Put("project",  .Identifier)
+	// expansions.Put("project_tags", strings.Join( .Tags, ","))
+
+	// if t.TriggerID != "" {
+	// 	expansions.Put("trigger_event_identifier", t.TriggerID)
+	// 	expansions.Put("trigger_event_type", t.TriggerType)
+	// 	expansions.Put("trigger_id", t.TriggerEvent)
+	// 	var upstreamProjectID string
+	// 	if t.TriggerType == model.ProjectTriggerLevelTask {
+	// 		var upstreamTask *task.Task
+	// 		upstreamTask, err = task.FindOneId(t.TriggerID)
+	// 		if err != nil {
+	// 			return nil, errors.Wrap(err, "error finding task")
+	// 		}
+	// 		if upstreamTask == nil {
+	// 			return nil, errors.New("upstream task not found")
+	// 		}
+	// 		expansions.Put("trigger_status", upstreamTask.Status)
+	// 		expansions.Put("trigger_revision", upstreamTask.Revision)
+	// 		upstreamProjectID = upstreamTask.Project
+	// 	} else if t.TriggerType == ProjectTriggerLevelBuild {
+	// 		var upstreamBuild *build.Build
+	// 		upstreamBuild, err = build.FindOneId(t.TriggerID)
+	// 		if err != nil {
+	// 			return nil, errors.Wrap(err, "error finding build")
+	// 		}
+	// 		if upstreamBuild == nil {
+	// 			return nil, errors.New("upstream build not found")
+	// 		}
+	// 		expansions.Put("trigger_status", upstreamBuild.Status)
+	// 		expansions.Put("trigger_revision", upstreamBuild.Revision)
+	// 		upstreamProjectID = upstreamBuild.Project
+	// 	}
+
+	// }
+
+	// v, err := VersionFindOneId(t.Version)
+	// if err != nil {
+	// 	return nil, errors.Wrap(err, "error finding version")
+	// }
+	// if v == nil {
+	// 	return nil, errors.Wrapf(err, "version '%s' doesn't exist", v.Id)
+	// }
+
+	// expansions.Put("branch_name", v.Branch)
+	// expansions.Put("author", v.Author)
+	// expansions.Put("created_at", v.CreateTime.Format(build.IdTimeLayout))
+
+	// if evergreen.IsGitTagRequester(v.Requester) {
+	// 	expansions.Put("triggered_by_git_tag", v.TriggeredByGitTag.Tag)
+	// }
+	// if evergreen.IsPatchRequester(v.Requester) {
+	// 	var p *patch.Patch
+	// 	p, err = patch.FindOne(patch.ByVersion(t.Version))
+	// 	if err != nil {
+	// 		return nil, errors.Wrapf(err, "error finding patch for version '%s'", t.Version)
+	// 	}
+	// 	if p == nil {
+	// 		return nil, errors.Errorf("no patch found for version '%s'", t.Version)
+	// 	}
+
+	// 	expansions.Put("is_patch", "true")
+	// 	expansions.Put("revision_order_id", fmt.Sprintf("%s_%d", v.Author, v.RevisionOrderNumber))
+	// 	expansions.Put("alias", p.Alias)
+
+	// 	if v.Requester == evergreen.MergeTestRequester {
+	// 		expansions.Put("is_commit_queue", "true")
+	// 		expansions.Put("commit_message", p.Description)
+	// 	}
+
+	// 	if v.Requester == evergreen.GithubPRRequester {
+	// 		expansions.Put("github_pr_number", fmt.Sprintf("%d", p.GithubPatchData.PRNumber))
+	// 		expansions.Put("github_org", p.GithubPatchData.BaseOwner)
+	// 		expansions.Put("github_repo", p.GithubPatchData.BaseRepo)
+	// 		expansions.Put("github_author", p.GithubPatchData.Author)
+	// 	}
+	// } else {
+	// 	expansions.Put("revision_order_id", strconv.Itoa(v.RevisionOrderNumber))
+	// }
+
+	for _, e := range h.Distro.Expansions {
+		expansions.Put(e.Key, e.Value)
+	}
+	// proj, _, err := LoadProjectForVersion(v, t.Project, false)
+	// if err != nil {
+	// 	return nil, errors.Wrap(err, "error unmarshalling project")
+	// }
+	// bv := proj.FindBuildVariant(t.BuildVariant)
+	// expansions.Update(bv.Expansions)
+	return expansions, nil
+}
+
 // LocalAgentRun - run a file
-func LocalAgentRun(file string, display_task_id string, build_variant string) {
+func LocalAgentRun(file string, display_task_id string, build_variant string, expansions string) {
 
 	// var a *Agent
 	// var mockCommunicator *client.LocalRunMock
@@ -796,7 +908,7 @@ func LocalAgentRun(file string, display_task_id string, build_variant string) {
 
 	var tc = &taskContext{
 		task: client.TaskData{
-			ID:     "task_id",
+			ID:     "task_id456",
 			Secret: "task_secret",
 		},
 		taskConfig: &model.TaskConfig{
@@ -817,6 +929,13 @@ func LocalAgentRun(file string, display_task_id string, build_variant string) {
 	if err != nil {
 		panic(err)
 	}
+
+	expands, err := ioutil.ReadFile(expansions)
+	check(err)
+
+	var expandsYaml map[string]string
+	err = yaml.Unmarshal(expands, &expandsYaml)
+	check(err)
 
 	var tmpDirName string
 	tmpDirName, err = ioutil.TempDir("/home/ubuntu/temp", "evg_local_run_")
@@ -839,7 +958,7 @@ func LocalAgentRun(file string, display_task_id string, build_variant string) {
 			Name: "buildvariant_id",
 		},
 		Task: &task.Task{
-			Id:          "task_id",
+			Id:          "task_id456",
 			Version:     versionId,
 			DisplayName: display_task_id,
 		},
@@ -864,10 +983,10 @@ func LocalAgentRun(file string, display_task_id string, build_variant string) {
 			CloneMethod: "",
 		},
 		ProjectRef: &model.ProjectRef{
-			// TODO
-			Owner:  "mongodb",
+			// TODO - make configurable
+			Owner:  "markbenvenuto",
 			Repo:   "mongo",
-			Branch: "master",
+			Branch: "blackduck_vulnerability_evg",
 		},
 	}
 
@@ -940,39 +1059,43 @@ func LocalAgentRun(file string, display_task_id string, build_variant string) {
 	bv := p.FindBuildVariant(dt.BuildVariant)
 	tc.taskConfig.Expansions.Update(bv.Expansions)
 
-	// h := host.Host{
-	// 	Id: "h",
-	// 	Distro: distro.Distro{
-	// 		Id:      "d1",
-	// 		WorkDir: "/home/evg",
-	// 		Expansions: []distro.Expansion{
-	// 			distro.Expansion{
-	// 				Key:   "note",
-	// 				Value: "huge success",
-	// 			},
-	// 			distro.Expansion{
-	// 				Key:   "cake",
-	// 				Value: "truth",
-	// 			},
-	// 			// distro.Expansion{
-	// 			// 	Key: "Foo", Value: "Bar"},
-	// 			// distro.Expansion{
-	// 			// 	Key: "aws_key", Value: "FAKEFAKE"},
-	// 			// distro.Expansion{
-	// 			// 	Key: "aws_secret", Value: "FAKEFAKE"},
-	// 			// distro.Expansion{
-	// 			// 	Key: "LocalRunHack", Value: "true"},
-	// 			// // Hard coded evergreen constants
-	// 			// distro.Expansion{
-	// 			// 	Key: "global_github_oauth_token", Value: "FAKE"},
-	// 		},
-	// 	},
-	// }
+	tc.taskConfig.Expansions.Update(expandsYaml)
 
-	// e, err := model.PopulateExpansions(dt, &h, "FAKEOAUTH")
-	// if err != nil {
-	// 	return
-	// }
+	h := host.Host{
+		Id: "h",
+		Distro: distro.Distro{
+			Id:      "d1",
+			WorkDir: "/home/evg",
+			Expansions: []distro.Expansion{
+				distro.Expansion{
+					Key:   "note",
+					Value: "huge success",
+				},
+				distro.Expansion{
+					Key:   "cake",
+					Value: "truth",
+				},
+				// distro.Expansion{
+				// 	Key: "Foo", Value: "Bar"},
+				// distro.Expansion{
+				// 	Key: "aws_key", Value: "FAKEFAKE"},
+				// distro.Expansion{
+				// 	Key: "aws_secret", Value: "FAKEFAKE"},
+				// distro.Expansion{
+				// 	Key: "LocalRunHack", Value: "true"},
+				// // Hard coded evergreen constants
+				// distro.Expansion{
+				// 	Key: "global_github_oauth_token", Value: "FAKE"},
+			},
+		},
+	}
+
+	e1, err := PopulateExpansions(dt, &h, "FAKEOAUTH")
+	if err != nil {
+		return
+	}
+
+	tc.taskConfig.Expansions.Update(e1)
 
 	// tc.taskConfig.Expansions = &e
 
@@ -987,7 +1110,7 @@ func LocalAgentRun(file string, display_task_id string, build_variant string) {
 
 	fmt.Println("Close logger")
 	_ = tc.logger.Close()
-	msgs := mockCommunicator.GetMockMessages()["task_id"]
+	msgs := mockCommunicator.GetMockMessages()["task_id456"]
 
 	// for i := 0; i < len(msgs); i++ {
 	// 	fmt.Printf("msg: %v\n", msgs[i])

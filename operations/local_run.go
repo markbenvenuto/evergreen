@@ -15,6 +15,7 @@ func LocalRun() cli.Command {
 		keyNameFlagName      = "name"
 		keyFileFlagName      = "file"
 		buildVariantFlagName = "build"
+		expansionsFileName   = "expansions"
 	)
 
 	return cli.Command{
@@ -29,6 +30,10 @@ func LocalRun() cli.Command {
 			cli.StringFlag{
 				Name:  keyFileFlagName,
 				Usage: "specify the path of an evergreen file",
+			},
+			cli.StringFlag{
+				Name:  expansionsFileName,
+				Usage: "specify the path of file with expansions",
 			},
 			cli.StringFlag{
 				Name:  buildVariantFlagName,
@@ -57,8 +62,9 @@ func LocalRun() cli.Command {
 			keyName := c.String(keyNameFlagName)
 			keyFile := c.String(keyFileFlagName)
 			buildVariant := c.String(buildVariantFlagName)
+			expansions := c.String(expansionsFileName)
 
-			agent.LocalAgentRun(keyFile, keyName, buildVariant)
+			agent.LocalAgentRun(keyFile, keyName, buildVariant, expansions)
 			return nil
 		},
 	}
